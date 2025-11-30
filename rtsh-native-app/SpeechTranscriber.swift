@@ -109,8 +109,20 @@ final class SpeechTranscriber: NSObject, ObservableObject, SCStreamDelegate {
     }
     
     func pause() {
-        log("pause() called")
+        log("pause() called - cancelling task")
         isPaused = true
+        
+        // Flush any pending text
+        commitUtterance()
+        
+        // Cancel the current recognition task to stop listening completely
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        
+        silenceTimer?.invalidate()
+        silenceTimer = nil
+        
         DispatchQueue.main.async {
             self.appState?.updateOnMain {
                 self.appState?.isPaused = true
@@ -119,8 +131,12 @@ final class SpeechTranscriber: NSObject, ObservableObject, SCStreamDelegate {
     }
     
     func resume() {
-        log("resume() called")
+        log("resume() called - restarting task")
         isPaused = false
+        
+        // Restart the recognition task
+        switchRecognitionSource(activeSpeaker)
+        
         DispatchQueue.main.async {
             self.appState?.updateOnMain {
                 self.appState?.isPaused = false

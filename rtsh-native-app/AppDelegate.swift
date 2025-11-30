@@ -27,9 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // We inject the appState here.
         let contentView = ContentView()
             .environmentObject(appState)
-            .frame(width: 360, height: 500) // Compact size
-            .background(.ultraThinMaterial) // Use SwiftUI material for blur
-            .cornerRadius(24) // Match the corner radius
+            .frame(width: 450, height: 625) // Increased size by 25%
             .ignoresSafeArea() // Ensure it fills the window
 
         let hostingView = NSHostingView(rootView: contentView)

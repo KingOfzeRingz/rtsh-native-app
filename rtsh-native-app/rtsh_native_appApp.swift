@@ -5,7 +5,7 @@ struct rtsh_native_appApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        MenuBarExtra("Coach", systemImage: "brain.head.profile") {
+        MenuBarExtra("Assistant", systemImage: "brain.head.profile") {
             Button("Show/Hide Assistant") {
                 appDelegate.toggleOverlay()
             }

@@ -352,6 +352,7 @@ struct TranscriptPill: View {
                 .font(.system(size: 13))
                 .foregroundColor(.black)
                 .lineLimit(1)
+                .truncationMode(.head) // Show the latest text
 
             Spacer()
         }

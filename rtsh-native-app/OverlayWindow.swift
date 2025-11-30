@@ -6,7 +6,7 @@ class OverlayWindow: NSWindow {
         let style: NSWindow.StyleMask = [.borderless, .resizable] // Added resizable for better behavior
         
         super.init(
-            contentRect: NSRect(x: 100, y: 100, width: 360, height: 500), // Compact size
+            contentRect: NSRect(x: 100, y: 100, width: 450, height: 625), // Increased size by 25%
             styleMask: style,
             backing: .buffered,
             defer: false
@@ -26,7 +26,21 @@ class OverlayWindow: NSWindow {
         self.isMovableByWindowBackground = true
         self.center()
         
-        self.contentView = view
+        // Create the visual effect view for the glass background
+        let visualEffect = NSVisualEffectView()
+        visualEffect.blendingMode = .behindWindow
+        visualEffect.state = .active
+        visualEffect.material = .hudWindow // The native "heavy glass" look
+        visualEffect.wantsLayer = true
+        visualEffect.layer?.cornerRadius = 24
+        visualEffect.layer?.masksToBounds = true
+        
+        // Add the SwiftUI view as a subview of the visual effect view
+        view.frame = visualEffect.bounds
+        view.autoresizingMask = [.width, .height]
+        visualEffect.addSubview(view)
+        
+        self.contentView = visualEffect
     }
     
     override var canBecomeKey: Bool {
