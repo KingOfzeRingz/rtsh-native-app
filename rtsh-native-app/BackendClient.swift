@@ -119,4 +119,32 @@ final class BackendClient {
             }
         }.resume()
     }
+    
+    func fetchSummary(conversationId: Int, completion: @escaping (SummaryData?) -> Void) {
+        guard let url = URL(string: "http://3.67.9.62:8000/conversations/\(conversationId)/summary") else {
+            completion(nil)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                print("Error fetching summary: \(error)")
+                completion(nil)
+                return
+            }
+            
+            guard let data = data else {
+                completion(nil)
+                return
+            }
+            
+            do {
+                let summary = try JSONDecoder().decode(SummaryData.self, from: data)
+                completion(summary)
+            } catch {
+                print("Error decoding summary: \(error)")
+                completion(nil)
+            }
+        }.resume()
+    }
 }

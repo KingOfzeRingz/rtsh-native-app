@@ -7,12 +7,19 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if appState.isRecording {
-                ActiveMeetingView(transcriberHolder: transcriberHolder)
-            } else {
+            switch appState.currentScreen {
+            case .welcome:
                 StartView(transcriberHolder: transcriberHolder)
+                    .transition(.opacity)
+            case .active:
+                ActiveMeetingView(transcriberHolder: transcriberHolder)
+                    .transition(.opacity)
+            case .summary:
+                SummaryView()
+                    .transition(.opacity)
             }
         }
+        .animation(.easeInOut, value: appState.currentScreen)
 
         // Removed fixed frame and opaque background
         .onAppear {
@@ -37,7 +44,7 @@ struct StartView: View {
 
             VStack(spacing: 12) {
 
-                Text("askLio")
+                Text("Sekundant  x  askLio")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
@@ -56,12 +63,12 @@ struct StartView: View {
                         .frame(width: 50, height: 50)
                         .padding(.bottom, 20)
 
-                    Text("askLio Assistant")
+                    Text("Negotiation Assistant")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.black)
                         .padding(.bottom, 8)
 
-                    Text("Real-time insights from your\nmeeting. Nothing more.")
+                    Text("Real-time insights from your meeting. Nothing more.")
                         .font(.system(size: 15))
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)

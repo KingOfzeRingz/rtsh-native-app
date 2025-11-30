@@ -55,7 +55,7 @@ final class SpeechTranscriber: NSObject, ObservableObject, SCStreamDelegate {
     private var micSpeechLevel: Float = 0
     private var systemSpeechLevel: Float = 0
     private let speechThreshold: Float = 0.01
-
+    
     private var lastSpeakerUpdate = Date()
     private let speakerHoldTime: TimeInterval = 0.25
 
@@ -233,7 +233,7 @@ final class SpeechTranscriber: NSObject, ObservableObject, SCStreamDelegate {
         let systemSpeaking = systemSpeechLevel > speechThreshold
 
         var newSpeaker: ActiveSpeaker = activeSpeaker
-
+        
         if micSpeaking && !systemSpeaking {
             newSpeaker = .mic
         } else if systemSpeaking && !micSpeaking {

@@ -21,6 +21,17 @@ struct Company: Identifiable, Decodable, Hashable {
     var id: Int { firmen_id }
 }
 
+struct SummaryData: Decodable {
+    let summary: String
+    // Add other fields if needed from backend
+}
+
+enum AppScreen {
+    case welcome
+    case active
+    case summary
+}
+
 // MARK: - AppState
 
 final class AppState: ObservableObject {
@@ -61,6 +72,11 @@ final class AppState: ObservableObject {
     
     @Published var isStarting: Bool = false
     @Published var isPaused: Bool = false
+    
+    // MARK: - Navigation & Session Data
+    @Published var currentScreen: AppScreen = .welcome
+    @Published var sessionStartTime: Date?
+    @Published var summaryData: SummaryData?
 
     func startNewConversation(completion: @escaping () -> Void) {
         isStarting = true
@@ -74,6 +90,8 @@ final class AppState: ObservableObject {
                     self?.convId = Int.random(in: 100000...999999)
                 }
                 self?.isStarting = false
+                self?.sessionStartTime = Date()
+                self?.currentScreen = .active
                 completion()
             }
         }
@@ -110,6 +128,23 @@ final class AppState: ObservableObject {
     func handleBackendMessage(_ event: AssistantEvent) {
         updateOnMain {
             self.events.insert(event, at: 0)
+        }
+    }
+    
+    // MARK: - Session Management
+    
+    func resetSession() {
+        updateOnMain {
+            self.micTranscript = ""
+            self.systemTranscript = ""
+            self.currentUtterance = ""
+            self.systemCurrentUtterance = ""
+            self.events.removeAll()
+            self.debugMessage = "Ready"
+            self.isPaused = false
+            self.currentScreen = .welcome
+            self.summaryData = nil
+            self.sessionStartTime = nil
         }
     }
 }

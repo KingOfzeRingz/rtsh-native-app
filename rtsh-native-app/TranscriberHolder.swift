@@ -42,6 +42,14 @@ final class TranscriberHolder: ObservableObject {
         transcriber = nil
         isRunning = false
         appState.isRecording = false
+        
+        // Fetch summary and show summary screen
+        appState.backendClient.fetchSummary(conversationId: appState.convId) { [weak appState] summary in
+            appState?.updateOnMain {
+                appState?.summaryData = summary
+            }
+        }
+        appState.currentScreen = .summary
     }
     
     func pause(appState: AppState) {
