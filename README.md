@@ -1,4 +1,4 @@
-# askLio - Native macOS Meeting Assistant
+# askLio - Native macOS Negotiation Meeting Assistant
 
 **askLio** is a native macOS application designed to provide real-time AI insights during your meetings. By intelligently capturing both your microphone and system audio, it transcribes the conversation and delivers context-aware suggestions, warnings, and summaries directly to your screen.
 
@@ -86,5 +86,4 @@ This app requires sensitive permissions to function:
 -   `NSSystemAudio`: Captured via `ScreenCaptureKit`. Note that macOS requires "Screen Recording" permission to capture system audio, even if no video is recorded.
 
 ## 📄 License
-
-[Your License Here]
+All Rights Reserved
