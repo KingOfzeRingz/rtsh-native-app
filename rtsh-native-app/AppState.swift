@@ -22,8 +22,9 @@ struct Company: Identifiable, Decodable, Hashable {
 }
 
 struct SummaryData: Decodable {
-    let summary: String
-    // Add other fields if needed from backend
+    let summary: String?
+    let detail: String? // For FastAPI errors
+    let message: String? // Generic error message
 }
 
 enum AppScreen {

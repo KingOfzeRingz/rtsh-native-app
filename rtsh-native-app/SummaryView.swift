@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SummaryView: View {
     @EnvironmentObject var appState: AppState
@@ -44,15 +45,38 @@ struct SummaryView: View {
             
             // AI Summary
             VStack(alignment: .leading, spacing: 8) {
-                Text("AI ANALYSIS")
-                    .font(.caption)
-                    .foregroundColor(.gray)
+                HStack {
+                    Text("AI ANALYSIS")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Spacer()
+                    if let summary = appState.summaryData, let text = summary.summary {
+                        Button(action: {
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.setString(text, forType: .string)
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Copy to clipboard")
+                    }
+                }
                 
-                if let summary = appState.summaryData {
+                if let summaryData = appState.summaryData {
                     ScrollView {
-                        Text(summary.summary)
-                            .font(.body)
-                            .lineSpacing(4)
+                        if let summaryText = summaryData.summary {
+                            MarkdownView(text: summaryText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if let errorText = summaryData.detail ?? summaryData.message {
+                            Text(errorText)
+                                .font(.body)
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 8)
+                        }
                     }
                 } else {
                     HStack {

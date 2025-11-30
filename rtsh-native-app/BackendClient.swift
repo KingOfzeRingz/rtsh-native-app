@@ -121,7 +121,7 @@ final class BackendClient {
     }
     
     func fetchSummary(conversationId: Int, completion: @escaping (SummaryData?) -> Void) {
-        guard let url = URL(string: "http://3.67.9.62:8000/conversations/\(conversationId)/summary") else {
+        guard let url = URL(string: "http://3.67.9.62:8000/get_summary/\(conversationId)") else {
             completion(nil)
             return
         }
@@ -143,7 +143,14 @@ final class BackendClient {
                 completion(summary)
             } catch {
                 print("Error decoding summary: \(error)")
-                completion(nil)
+                // Fallback for "too short" or other errors where summary is missing
+                // We construct a SummaryData with the error message
+                let errorSummary = SummaryData(
+                    summary: nil,
+                    detail: "Meeting was too short to generate a summary.",
+                    message: nil
+                )
+                completion(errorSummary)
             }
         }.resume()
     }
