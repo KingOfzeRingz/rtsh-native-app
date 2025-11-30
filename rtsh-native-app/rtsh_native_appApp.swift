@@ -2,12 +2,18 @@ import SwiftUI
 
 @main
 struct rtsh_native_appApp: App {
-    @StateObject private var appState = AppState()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environmentObject(appState)
+        MenuBarExtra("Coach", systemImage: "brain.head.profile") {
+            Button("Show/Hide Assistant") {
+                appDelegate.toggleOverlay()
+            }
+            Divider()
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
         }
+        .menuBarExtraStyle(.menu)
     }
 }

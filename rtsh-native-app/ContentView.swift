@@ -13,8 +13,8 @@ struct ContentView: View {
                 StartView(transcriberHolder: transcriberHolder)
             }
         }
-        .frame(width: 380, height: 650)
-        .background(Color(nsColor: .windowBackgroundColor))
+
+        // Removed fixed frame and opaque background
         .onAppear {
             appState.backendClient.connect(appState: appState)
             transcriberHolder.checkPermissions(appState: appState)
@@ -32,7 +32,8 @@ struct StartView: View {
 
     var body: some View {
         ZStack {
-            backgroundColor.edgesIgnoringSafeArea(.all)
+            // Removed solid background
+
 
             VStack(spacing: 12) {
 
@@ -41,7 +42,9 @@ struct StartView: View {
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(cardBackgroundColor)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(.regularMaterial) // Glassy
                     .cornerRadius(12)
 
                 VStack(spacing: 0) {
@@ -102,7 +105,8 @@ struct StartView: View {
                     .cornerRadius(16)
                     .padding(16)
                 }
-                .background(cardBackgroundColor)
+
+                .background(.regularMaterial) // Glassy
                 .cornerRadius(24)
 
                 Button(action: {
@@ -126,7 +130,8 @@ struct StartView: View {
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(cardBackgroundColor)
+                    .frame(height: 50)
+                    .background(.regularMaterial) // Glassy
                     .cornerRadius(16)
                 }
                 .buttonStyle(.plain)
@@ -181,7 +186,8 @@ struct ActiveMeetingView: View {
 
     var body: some View {
         ZStack {
-            backgroundColor.edgesIgnoringSafeArea(.all)
+            // Removed solid background
+
 
             VStack(spacing: 12) {
                 Text("askLio")
@@ -189,7 +195,9 @@ struct ActiveMeetingView: View {
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(cardBackgroundColor)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(.regularMaterial) // Glassy
                     .cornerRadius(12)
 
                 VStack(spacing: 0) {
@@ -226,7 +234,8 @@ struct ActiveMeetingView: View {
                     }
                     .padding(containerPadding)
                 }
-                .background(cardBackgroundColor)
+
+                .background(.regularMaterial) // Glassy
                 .cornerRadius(cardRadius)
                 // Controls
                 HStack(spacing: 16) {
@@ -347,7 +356,7 @@ struct TranscriptPill: View {
             Spacer()
         }
         .padding(12)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.96))
+        .background(.ultraThinMaterial) // Glassy pill
         .cornerRadius(radius)
         .overlay(
             RoundedRectangle(cornerRadius: radius)

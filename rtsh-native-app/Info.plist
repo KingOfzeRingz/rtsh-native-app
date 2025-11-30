@@ -11,5 +11,7 @@
 	<string>We need speech recognition to transcribe your meeting.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>We need microphone access to hear you.</string>
+	<key>LSUIElement</key>
+	<true/>
 </dict>
 </plist>
