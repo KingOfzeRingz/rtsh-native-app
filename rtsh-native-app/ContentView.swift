@@ -6,13 +6,79 @@ struct ContentView: View {
     @StateObject private var transcriberHolder = TranscriberHolder()
 
     var body: some View {
-        VStack(spacing: 8) {
+        Group {
+            if appState.isRecording {
+                ActiveMeetingView(transcriberHolder: transcriberHolder)
+            } else {
+                StartView(transcriberHolder: transcriberHolder)
+            }
+        }
+        .frame(minWidth: 500, minHeight: 600)
+        .onAppear {
+            // Ensure backend is connected
+            appState.backendClient.connect(appState: appState)
+        }
+    }
+}
+
+// MARK: - Start View
+struct StartView: View {
+    @ObservedObject var transcriberHolder: TranscriberHolder
+    @EnvironmentObject var appState: AppState
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "mic.circle.fill")
+                .resizable()
+                .frame(width: 80, height: 80)
+                .foregroundColor(.blue)
+            
             Text("Meeting Assistant")
-                .font(.headline)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+            
+            Text("Ready to transcribe your meeting.")
+                .font(.body)
+                .foregroundColor(.secondary)
+            
+            Button(action: {
+                transcriberHolder.start(appState: appState)
+            }) {
+                Text("Start Meeting")
+                    .font(.headline)
+                    .padding()
+                    .frame(width: 200)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding()
+    }
+}
+
+// MARK: - Active Meeting View
+struct ActiveMeetingView: View {
+    @ObservedObject var transcriberHolder: TranscriberHolder
+    @EnvironmentObject var appState: AppState
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("🔴 Recording")
+                    .font(.headline)
+                    .foregroundColor(.red)
+                Spacer()
+                Button("Stop") {
+                    transcriberHolder.stop(appState: appState)
+                }
+            }
+            .padding(.bottom, 8)
 
             // Transcript area
             VStack(alignment: .leading, spacing: 4) {
-                Text("Transcript")
+                Text("Microphone Transcript")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
@@ -21,7 +87,25 @@ struct ContentView: View {
                          (appState.currentUtterance.isEmpty ? "" : " " + appState.currentUtterance))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(8)
+                        .textSelection(.enabled)
                 }
+                .frame(maxHeight: 200)
+                .background(Color(NSColor.windowBackgroundColor))
+                .cornerRadius(8)
+
+                Text("System Audio Transcript")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.top, 8)
+
+                ScrollView {
+                    Text(appState.systemTranscript + 
+                         (appState.systemCurrentUtterance.isEmpty ? "" : " " + appState.systemCurrentUtterance))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .textSelection(.enabled)
+                }
+                .frame(maxHeight: 200)
                 .background(Color(NSColor.windowBackgroundColor))
                 .cornerRadius(8)
             }
@@ -42,12 +126,16 @@ struct ContentView: View {
                 }
                 .frame(minHeight: 150)
             }
+            
+            // Debug / Status
+            HStack {
+                Text(appState.debugMessage)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                Spacer()
+            }
         }
         .padding()
-        .onAppear {
-            appState.backendClient.connect(appState: appState)
-            transcriberHolder.start(appState: appState)
-        }
     }
 
     private func color(for type: EventType) -> Color {
@@ -69,5 +157,13 @@ final class TranscriberHolder: ObservableObject {
         transcriber = t
         t.start()
         isRunning = true
+        appState.isRecording = true
+    }
+    
+    func stop(appState: AppState) {
+        transcriber?.stop()
+        transcriber = nil
+        isRunning = false
+        appState.isRecording = false
     }
 }
