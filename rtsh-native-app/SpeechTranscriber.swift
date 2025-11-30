@@ -83,6 +83,17 @@ final class SpeechTranscriber: NSObject, ObservableObject, SCStreamDelegate {
         }
     }
 
+    func checkPermissions() {
+        requestAllPermissions { [weak self] granted in
+            guard let self = self else { return }
+            self.appState?.updateOnMain {
+                self.appState?.speechPermissionGranted = (SFSpeechRecognizer.authorizationStatus() == .authorized)
+                self.appState?.micPermissionGranted = (AVCaptureDevice.authorizationStatus(for: .audio) == .authorized)
+                self.appState?.systemAudioPermissionGranted = true // Assumed true for now as SCKit doesn't have a simple check without stream
+            }
+        }
+    }
+
     func stop() {
         log("stop() called")
         DispatchQueue.main.async {
