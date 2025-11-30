@@ -11,12 +11,8 @@ final class BackendClient {
         listen(appState: appState)
     }
 
-    func sendText(convId: String, source: String, text: String) {
-        let payload: [String: Any] = [
-            "conv_id": convId,
-            "source": source,
-            "text": text
-        ]
+    // Generic send with your final schema
+    func send(_ payload: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: payload),
               let string = String(data: data, encoding: .utf8) else { return }
 
@@ -41,6 +37,7 @@ final class BackendClient {
                 }
             }
 
+            // Keep listening
             self?.listen(appState: appState)
         }
     }
@@ -57,12 +54,69 @@ final class BackendClient {
                 case "green": type = .success
                 default: type = .question
                 }
-                DispatchQueue.main.async {
-                    appState.handleBackendMessage(
-                        AssistantEvent(type: type, text: msg)
-                    )
-                }
+                appState.handleBackendMessage(
+                    AssistantEvent(type: type, text: msg)
+                )
             }
         }
+    }
+    
+    // MARK: - HTTP API
+    
+    func fetchCompanies(appState: AppState) {
+        guard let url = URL(string: "http://3.67.9.62:8000/companies") else { return }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                print("Error fetching companies: \(error)")
+                return
+            }
+            
+            guard let data = data else { return }
+            
+            do {
+                let companies = try JSONDecoder().decode([Company].self, from: data)
+                appState.updateOnMain {
+                    appState.companies = companies
+                    // Select first company by default if none selected
+                    if appState.selectedCompany == nil {
+                        appState.selectedCompany = companies.first
+                    }
+                }
+                print("Fetched \(companies.count) companies")
+            } catch {
+                print("Error decoding companies: \(error)")
+            }
+        }.resume()
+    }
+    
+    func createConversation(companyId: Int, completion: @escaping (Int?) -> Void) {
+        guard let url = URL(string: "http://3.67.9.62:8000/conversations") else {
+            completion(nil)
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = ["vendor_id": companyId]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                print("Error creating conversation: \(String(describing: error))")
+                completion(nil)
+                return
+            }
+            
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let id = json["id"] as? Int {
+                completion(id)
+            } else {
+                print("Failed to parse conversation ID from response")
+                completion(nil)
+            }
+        }.resume()
     }
 }

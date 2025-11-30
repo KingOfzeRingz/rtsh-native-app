@@ -2,6 +2,7 @@ import Foundation
 import Combine
 
 // MARK: - Event Models
+
 enum EventType: String {
     case question, warning, alert, success
 }
@@ -12,60 +13,73 @@ struct AssistantEvent: Identifiable {
     let text: String
 }
 
-// MARK: - AppState
-final class AppState: ObservableObject {
+struct Company: Identifiable, Decodable, Hashable {
+    let firmen_id: Int
+    let name: String
+    let logo: String
     
-    // MARK: - Microphone Transcripts
-    @Published var micTranscript: String = ""
-    @Published var currentUtterance: String = "" // Used by Mic pipeline
+    var id: Int { firmen_id }
+}
 
-    // MARK: - System Audio Transcripts (Fixes 'Value has no member...')
+// MARK: - AppState
+
+final class AppState: ObservableObject {
+
+    // MARK: - Microphone / System Transcripts
+    @Published var micTranscript: String = ""
+    @Published var currentUtterance: String = ""
+
     @Published var systemTranscript: String = ""
-    @Published var systemCurrentUtterance: String = "" // <--- Fixes the error
-    
+    @Published var systemCurrentUtterance: String = ""
+
     // MARK: - App Status & Permissions
     @Published var isRecording: Bool = false
     @Published var debugMessage: String = "Initializing..."
-    
+
     @Published var speechPermissionGranted: Bool = false
     @Published var micPermissionGranted: Bool = false
     @Published var systemAudioPermissionGranted: Bool = false
+
+    // MARK: - Conversation / Company Metadata
+    @Published var convId: Int = 123       // Dynamic per session
+    @Published var companyId: Int = 1      // Derived from selectedCompany
+    
+    @Published var companies: [Company] = []
+    @Published var selectedCompany: Company? {
+        didSet {
+            if let company = selectedCompany {
+                companyId = company.firmen_id
+            }
+        }
+    }
 
     // MARK: - Events
     @Published var events: [AssistantEvent] = []
 
     // MARK: - Backend Interaction
     let backendClient = BackendClient()
+    
+    @Published var isStarting: Bool = false
+    @Published var isPaused: Bool = false
 
-    // Unified method to send text from any source
-    func appendChunkAndSend(_ text: String, source: String) {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        
-        // Update UI based on source (Thread-Safe)
-        updateOnMain {
-            if source == "mic_mix" {
-                self.micTranscript += (self.micTranscript.isEmpty ? "" : " ") + text
-            } else if source == "system_audio" {
-                self.systemTranscript += (self.systemTranscript.isEmpty ? "" : " ") + text
+    func startNewConversation(completion: @escaping () -> Void) {
+        isStarting = true
+        backendClient.createConversation(companyId: companyId) { [weak self] newId in
+            self?.updateOnMain {
+                if let newId = newId {
+                    self?.convId = newId
+                    print("Created new Conversation ID: \(newId)")
+                } else {
+                    print("Failed to create conversation, using fallback/random")
+                    self?.convId = Int.random(in: 100000...999999)
+                }
+                self?.isStarting = false
+                completion()
             }
         }
-
-        // Send to Backend
-        backendClient.sendText(
-            convId: "1",
-            source: source,
-            text: text
-        )
     }
 
-    func handleBackendMessage(_ event: AssistantEvent) {
-        updateOnMain {
-            self.events.insert(event, at: 0)
-        }
-    }
-}
-
-extension AppState {
+    // Thread-safe helper for publishing changes
     func updateOnMain(_ update: @escaping () -> Void) {
         if Thread.isMainThread {
             update()
@@ -73,6 +87,29 @@ extension AppState {
             DispatchQueue.main.async {
                 update()
             }
+        }
+    }
+
+    // MARK: - Sending Transcript Chunks to Backend
+
+    func sendTranscriptChunk(text: String, from speaker: ActiveSpeaker) {
+        let author: String = (speaker == .system ? "vendor" : "user")
+
+        let payload: [String: Any] = [
+            "conv_id": convId,
+            "company_id": companyId,
+            "author": author,
+            "text": text
+        ]
+
+        backendClient.send(payload)
+    }
+
+    // MARK: - Backend events → UI
+
+    func handleBackendMessage(_ event: AssistantEvent) {
+        updateOnMain {
+            self.events.insert(event, at: 0)
         }
     }
 }

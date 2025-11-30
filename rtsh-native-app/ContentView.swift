@@ -1,9 +1,6 @@
 import SwiftUI
 import Combine
-import Speech
-import AVFoundation
 
-// MARK: - Main Content View
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var transcriberHolder = TranscriberHolder()
@@ -16,34 +13,29 @@ struct ContentView: View {
                 StartView(transcriberHolder: transcriberHolder)
             }
         }
-        .frame(width: 380, height: 650) // Fixed size to match phone-like aspect ratio in screenshot
+        .frame(width: 380, height: 650)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             appState.backendClient.connect(appState: appState)
-            // Trigger a permission check on load so checkmarks update
             transcriberHolder.checkPermissions(appState: appState)
         }
     }
 }
 
-// MARK: - Start View (Matches Screenshot)
 struct StartView: View {
     @ObservedObject var transcriberHolder: TranscriberHolder
     @EnvironmentObject var appState: AppState
-    
-    // Custom color for the light gray background seen in the image
+
     let backgroundColor = Color(red: 0.93, green: 0.93, blue: 0.93)
     let cardBackgroundColor = Color.white
     let permissionBoxColor = Color(red: 0.97, green: 0.97, blue: 0.97)
 
     var body: some View {
         ZStack {
-            backgroundColor
-                .edgesIgnoringSafeArea(.all)
-            
+            backgroundColor.edgesIgnoringSafeArea(.all)
+
             VStack(spacing: 12) {
-                
-                // 1. Header "askLio"
+
                 Text("askLio")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.black)
@@ -51,39 +43,46 @@ struct StartView: View {
                     .frame(height: 44)
                     .background(cardBackgroundColor)
                     .cornerRadius(12)
-                
-                // 2. Main Center Card
+
                 VStack(spacing: 0) {
                     Spacer()
-                    
-                    // Icon
-                    Image("logo") // Using the asset found in the project
+
+                    Image("logo")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 50, height: 50)
                         .padding(.bottom, 20)
-                    
-                    // Title
+
                     Text("askLio Assistant")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.black)
                         .padding(.bottom, 8)
-                    
-                    // Subtitle
+
                     Text("Real-time insights from your\nmeeting. Nothing more.")
                         .font(.system(size: 15))
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
                     
+                    // Company Picker
+                    if !appState.companies.isEmpty {
+                        Picker("Select Company", selection: $appState.selectedCompany) {
+                            ForEach(appState.companies) { company in
+                                Text(company.name).tag(company as Company?)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .padding(.top, 16)
+                        .padding(.horizontal, 40)
+                    }
+
                     Spacer()
-                    
-                    // Permissions Box
+
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Permissions")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.black)
-                        
+
                         VStack(spacing: 14) {
                             PermissionRow(
                                 icon: "mic",
@@ -99,22 +98,30 @@ struct StartView: View {
                     }
                     .padding(20)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(permissionBoxColor) // Very light gray inside the white card
+                    .background(permissionBoxColor)
                     .cornerRadius(16)
-                    .padding(16) // Padding from the edge of the white card
+                    .padding(16)
                 }
                 .background(cardBackgroundColor)
                 .cornerRadius(24)
-                
-                // 3. Start Button
+
                 Button(action: {
-                    transcriberHolder.start(appState: appState)
+                    appState.startNewConversation {
+                        transcriberHolder.start(appState: appState)
+                    }
                 }) {
                     HStack(spacing: 8) {
-                        Image(systemName: "play") // Outline play icon like screenshot
-                            .font(.system(size: 16, weight: .medium))
-                        Text("Start")
-                            .font(.system(size: 16, weight: .semibold))
+                        if appState.isStarting {
+                            ProgressView()
+                                .controlSize(.small)
+                                .colorInvert()
+                                .brightness(1)
+                        } else {
+                            Image(systemName: "play")
+                                .font(.system(size: 16, weight: .medium))
+                            Text("Start")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
                     }
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
@@ -122,120 +129,70 @@ struct StartView: View {
                     .background(cardBackgroundColor)
                     .cornerRadius(16)
                 }
-                .buttonStyle(.plain) // Removes default button styling
+                .buttonStyle(.plain)
+                .disabled(appState.isStarting)
             }
-            .padding(12) // Outer padding for the whole window
+            .padding(12)
+        }
+        .onAppear {
+            appState.backendClient.fetchCompanies(appState: appState)
         }
     }
 }
 
-// MARK: - Helper Components
 struct PermissionRow: View {
     let icon: String
     let title: String
     let isGranted: Bool
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 18))
                 .foregroundColor(.black)
                 .frame(width: 24, alignment: .center)
-            
+
             Text(title)
                 .font(.system(size: 15))
-                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2)) // Dark gray
-            
+                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+
             Spacer()
-            
+
             if isGranted {
                 Image(systemName: "checkmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(red: 0.3, green: 0.7, blue: 0.3)) // Muted Green
+                    .foregroundColor(Color(red: 0.3, green: 0.7, blue: 0.3))
             }
         }
     }
 }
 
-// MARK: - Logic Holder
-final class TranscriberHolder: ObservableObject {
-    @Published var isRunning = false
-    private var transcriber: SpeechTranscriber?
-
-    func checkPermissions(appState: AppState) {
-        // Safe check without creating SpeechTranscriber instance
-        SFSpeechRecognizer.requestAuthorization { status in
-            appState.updateOnMain {
-                appState.speechPermissionGranted = (status == .authorized)
-            }
-        }
-        
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            appState.updateOnMain { appState.micPermissionGranted = true }
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { granted in
-                appState.updateOnMain { appState.micPermissionGranted = granted }
-            }
-        default:
-            appState.updateOnMain { appState.micPermissionGranted = false }
-        }
-        
-        // System audio assumed true for now
-        appState.updateOnMain { appState.systemAudioPermissionGranted = true }
-    }
-
-    func start(appState: AppState) {
-        let t = SpeechTranscriber(appState: appState)
-        transcriber = t
-        t.start()
-        isRunning = true
-        appState.isRecording = true
-    }
-    
-    func stop(appState: AppState) {
-        transcriber?.stop()
-        transcriber = nil
-        isRunning = false
-        appState.isRecording = false
-    }
-}
-
-// MARK: - Active Meeting View
 struct ActiveMeetingView: View {
     @ObservedObject var transcriberHolder: TranscriberHolder
     @EnvironmentObject var appState: AppState
-    
-    // Design Constants
-    let backgroundColor = Color(red: 0.93, green: 0.93, blue: 0.93) // Light Gray
+
+    let backgroundColor = Color(red: 0.93, green: 0.93, blue: 0.93)
     let cardBackgroundColor = Color.white
-    let accentRed = Color(red: 0.8, green: 0.3, blue: 0.25) // The reddish-brown from screenshot
-    
-    // Layout Constants for "Perfect Corners"
+    let accentRed = Color(red: 0.8, green: 0.3, blue: 0.25)
+
     let containerPadding: CGFloat = 12
     let cardRadius: CGFloat = 24
-    let innerItemRadius: CGFloat = 12 // cardRadius (24) - containerPadding (12) = 12
-    
+    let innerItemRadius: CGFloat = 12
+
     var body: some View {
         ZStack {
-            backgroundColor
-                .edgesIgnoringSafeArea(.all)
-            
+            backgroundColor.edgesIgnoringSafeArea(.all)
+
             VStack(spacing: 12) {
-                
-                // 1. Header
                 Text("askLio")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
                     .background(cardBackgroundColor)
-                    .cornerRadius(12) // Standalone element, radius 12 looks standard
-                
-                // 2. Main White Card
+                    .cornerRadius(12)
+
                 VStack(spacing: 0) {
-                    
-                    // A. Scrollable Events Area
                     ScrollView {
                         VStack(spacing: 8) {
                             ForEach(appState.events) { event in
@@ -249,20 +206,21 @@ struct ActiveMeetingView: View {
                         }
                         .padding(containerPadding)
                     }
-                    
-                    Spacer()
-                    
-                    // B. Live Transcript Bubbles (Bottom of Card)
+
+                    Spacer(minLength: 8)
+
                     VStack(spacing: 8) {
-                        // Mic Transcript Bubble
                         TranscriptPill(
-                            text: appState.currentUtterance.isEmpty ? "Listening to microphone..." : appState.currentUtterance,
+                            text: appState.currentUtterance.isEmpty
+                                ? "Listening to microphone..."
+                                : appState.currentUtterance,
                             radius: innerItemRadius
                         )
-                        
-                        // System Transcript Bubble
+
                         TranscriptPill(
-                            text: appState.systemCurrentUtterance.isEmpty ? "Listening to system audio..." : appState.systemCurrentUtterance,
+                            text: appState.systemCurrentUtterance.isEmpty
+                                ? "Listening to system audio..."
+                                : appState.systemCurrentUtterance,
                             radius: innerItemRadius
                         )
                     }
@@ -270,95 +228,103 @@ struct ActiveMeetingView: View {
                 }
                 .background(cardBackgroundColor)
                 .cornerRadius(cardRadius)
-                
-                // 3. Footer Controls
-                HStack(spacing: 12) {
-                    // Pause Button
+                // Controls
+                HStack(spacing: 16) {
                     Button(action: {
-                        // Pause logic here
-                    }) {
-                        HStack {
-                            Image(systemName: "pause")
-                            Text("Pause")
+                        if appState.isPaused {
+                            transcriberHolder.resume(appState: appState)
+                        } else {
+                            transcriberHolder.pause(appState: appState)
                         }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(cardBackgroundColor)
-                        .cornerRadius(16)
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: appState.isPaused ? "play.fill" : "pause.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(appState.isPaused ? "Resume" : "Pause")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(.black)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 20)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                        )
                     }
                     .buttonStyle(.plain)
-                    
-                    // End Button
+
                     Button(action: {
                         transcriberHolder.stop(appState: appState)
                     }) {
-                        HStack {
-                            Image(systemName: "stop.circle")
+                        HStack(spacing: 8) {
+                            Image(systemName: "stop.fill")
+                                .font(.system(size: 14, weight: .semibold))
                             Text("End")
+                                .font(.system(size: 14, weight: .semibold))
                         }
-                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(accentRed)
-                        .cornerRadius(16)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 20)
+                        .background(Color.red)
+                        .cornerRadius(12)
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.top, 8)
             }
-            .padding(12) // Outer padding
+            .padding(12)
         }
     }
-    
-    // Helpers for dynamic mapping
+
     func colorFor(_ type: EventType) -> Color {
         switch type {
         case .question: return .blue
         case .warning: return .red
-        case .alert: return .orange
+        case .alert:   return .orange
         case .success: return .green
         }
     }
-    
+
     func iconFor(_ type: EventType) -> String {
         switch type {
         case .question: return "bubble.left"
-        case .warning: return "exclamationmark.triangle"
-        case .alert: return "questionmark.circle"
-        case .success: return "checkmark.circle"
+        case .warning:  return "exclamationmark.triangle"
+        case .alert:    return "questionmark.circle"
+        case .success:  return "checkmark.circle"
         }
     }
 }
-
-// MARK: - Subcomponents
 
 struct EventRow: View {
     let icon: String
     let color: Color
     let text: String
     let radius: CGFloat
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(color)
                 .padding(.top, 2)
-            
+
             Text(text)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.black)
                 .fixedSize(horizontal: false, vertical: true)
-            
+
             Spacer()
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: radius)
                 .stroke(color, lineWidth: 1)
-                .background(RoundedRectangle(cornerRadius: radius).fill(color.opacity(0.05)))
+                .background(
+                    RoundedRectangle(cornerRadius: radius)
+                        .fill(color.opacity(0.05))
+                )
         )
     }
 }
@@ -366,22 +332,22 @@ struct EventRow: View {
 struct TranscriptPill: View {
     let text: String
     let radius: CGFloat
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "dot.radiowaves.left.and.right")
                 .foregroundColor(.green)
                 .font(.system(size: 14))
-            
+
             Text(text)
                 .font(.system(size: 13))
                 .foregroundColor(.black)
                 .lineLimit(1)
-            
+
             Spacer()
         }
         .padding(12)
-        .background(Color(red: 0.96, green: 0.96, blue: 0.96)) // Very light gray pill
+        .background(Color(red: 0.96, green: 0.96, blue: 0.96))
         .cornerRadius(radius)
         .overlay(
             RoundedRectangle(cornerRadius: radius)
